@@ -35,7 +35,6 @@ export default function Home() {
     }
     const loadFavs = async () => {
       try {
-        // inside useEffect that loads favs
         const res = await axios.get("/favourites/me", {
           headers: { Authorization: `Bearer ${user.token}` },
         });
@@ -50,14 +49,33 @@ export default function Home() {
 
   return (
     <>
-      <div className="w-full h-70 sm:h-80 lg:h-96 mb-10">
+      {/* ===========================
+          🚀 Professional Banner 
+      ============================ */}
+      <div className="relative w-full h-64 sm:h-80 lg:h-96 mb-12 rounded-xl overflow-hidden shadow-xl">
         <img
           src="/images/main-banner-blog.jpg"
           alt="Main Banner"
-          className="w-full h-full object-cover rounded-lg shadow-lg"
+          className="w-full h-full object-cover"
         />
+
+        {/* Dark overlay */}
+        <div className="absolute inset-0 bg-black bg-opacity-40"></div>
+
+        {/* Banner Text */}
+        <div className="absolute inset-0 flex flex-col items-center justify-center text-center text-white px-4">
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold drop-shadow-lg">
+            Welcome to BlogSpace
+          </h1>
+          <p className="mt-3 text-lg sm:text-xl opacity-90">
+            Discover amazing blogs, explore categories & share your story ✨
+          </p>
+        </div>
       </div>
 
+      {/* ===========================
+          Blog Cards Section
+      ============================ */}
       <div className="px-6 pb-10">
         <h1 className="text-3xl font-bold text-center text-blue-600 mb-6">
           Explore Latest Blogs
