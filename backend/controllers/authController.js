@@ -1,100 +1,78 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import db from "../models/db.js";
+import {
+  getUserByEmail,
+  createUser,
+  getUserById,
+} from "../models/userModel.js";
 
-// AUTO REGISTER + LOGIN (DEV MODE)
+// Strong password validator
+const strongPassword = (pw) =>
+  /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/.test(pw);
+
 export const loginUser = async (req, res) => {
   try {
-    const {
-      firstName = "User",
-      lastName = "Auto",
-      email,
-      password,
-      role = "user",
-      category = "general",
-    } = req.body;
+    const { email, password } = req.body;
 
-    if (!email || !password) {
+    if (!email || !password)
       return res.status(400).json({ message: "Email & password required" });
-    }
 
-    // Check if user exists
-    const [existing] = await db.query("SELECT * FROM users WHERE email = ?", [
-      email,
-    ]);
+    const existing = await getUserByEmail(email);
+    if (!existing) return res.status(400).json({ message: "User not found" });
 
-    // If NOT found → AUTO REGISTER
-    if (existing.length === 0) {
-      const hashed = await bcrypt.hash(password, 10);
+    const valid = await bcrypt.compare(password, existing.password);
+    if (!valid) return res.status(400).json({ message: "Invalid password" });
 
-      const [insert] = await db.query(
-        "INSERT INTO users (firstName, lastName, email, password, role, category) VALUES (?, ?, ?, ?, ?, ?)",
-        [firstName, lastName, email, hashed, role, category]
-      );
+    const user = await getUserById(existing.id);
 
-      const [newUserData] = await db.query("SELECT * FROM users WHERE id = ?", [
-        insert.insertId,
-      ]);
-
-      const newUser = newUserData[0];
-
-      const token = jwt.sign(
-        { id: newUser.id, email: newUser.email },
-        process.env.JWT_SECRET,
-        { expiresIn: "1d" }
-      );
-
-      return res.status(201).json({
-        message: "Auto Registered + Logged in",
-        user: newUser,
-        token,
-      });
-    }
-
-    // If user exists → normal login
-    const user = existing[0];
-    const valid = await bcrypt.compare(password, user.password);
-
-    if (!valid)
-      return res.status(400).json({ message: "Invalid email/password" });
-
-    const token = jwt.sign(
-      { id: user.id, email: user.email },
-      process.env.JWT_SECRET,
-      { expiresIn: "1d" }
-    );
-
-    return res.status(200).json({
-      message: "Login Successful",
-      user,
-      token,
+    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
+      expiresIn: "1d",
     });
+
+    return res.json({ user, token });
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ message: "Server error" });
+    console.error("LOGIN ERROR →", err);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
-// (OPTIONAL) Register Route (You can keep it or remove it)
 export const registerUser = async (req, res) => {
   try {
     const { firstName, lastName, email, password, role, category } = req.body;
 
-    const [existing] = await db.query("SELECT * FROM users WHERE email = ?", [
-      email,
-    ]);
-    if (existing.length > 0)
-      return res.status(400).json({ message: "User already exists" });
+    // Required fields
+    if (!firstName || !email || !password) {
+      return res
+        .status(400)
+        .json({ message: "First name, email & password are required" });
+    }
+
+    // Strong password check
+    if (!strongPassword(password)) {
+      return res.status(400).json({
+        message:
+          "Password must be 8+ chars with uppercase, lowercase, number & symbol",
+      });
+    }
+
+    // Check if user already exists
+    const exists = await getUserByEmail(email);
+    if (exists) return res.status(400).json({ message: "User already exists" });
 
     const hashed = await bcrypt.hash(password, 10);
-    await db.query(
-      "INSERT INTO users (firstName, lastName, email, password, role, category) VALUES (?, ?, ?, ?, ?, ?)",
-      [firstName, lastName, email, hashed, role, category]
-    );
 
-    return res.status(201).json({ message: "Manual Registration Done" });
+    const user = await createUser({
+      firstName,
+      lastName,
+      email,
+      password: hashed,
+      role: role || "user",
+      category: role === "blogger" ? category : null,
+    });
+
+    return res.status(201).json({ message: "Registration successful", user });
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ message: "Server error" });
+    console.error("REGISTER ERROR →", err);
+    res.status(500).json({ message: "Server error" });
   }
 };

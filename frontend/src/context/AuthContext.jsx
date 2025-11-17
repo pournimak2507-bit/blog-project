@@ -6,13 +6,21 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem("user");
-    if (savedUser) setUser(JSON.parse(savedUser));
+    const saved = localStorage.getItem("user");
+    if (saved) setUser(JSON.parse(saved));
   }, []);
 
-  const login = (userData) => {
-    setUser(userData);
-    localStorage.setItem("user", JSON.stringify(userData));
+  // Expect backend login to return { user, token, message? }
+  const login = (data) => {
+    // data could be { user, token } or previously full res.data
+    const u = data.user ? data.user : data;
+    const token = data.token ? data.token : data.user?.token || null;
+
+    // store combined object: { ...userFields, token }
+    const userWithToken = token ? { ...u, token } : u;
+
+    setUser(userWithToken);
+    localStorage.setItem("user", JSON.stringify(userWithToken));
   };
 
   const logout = () => {

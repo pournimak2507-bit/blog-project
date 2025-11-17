@@ -1,5 +1,6 @@
 import express from "express";
-import multer from "multer";
+import { verifyToken } from "../middleware/authMiddleware.js";
+import upload from "../middleware/upload.js";
 import {
   createBlog,
   getBlogs,
@@ -7,23 +8,15 @@ import {
   updateBlog,
   deleteBlog,
 } from "../controllers/blogController.js";
-import { verifyToken } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// ✅ Multer setup for image upload
-const storage = multer.diskStorage({
-  destination: "uploads/",
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + "-" + file.originalname);
-  },
-});
-const upload = multer({ storage });
-
-// ✅ Routes
-router.post("/", verifyToken, upload.single("image"), createBlog);
+// Public routes
 router.get("/", getBlogs);
 router.get("/:id", getBlogById);
+
+// Auth protected routes
+router.post("/", verifyToken, upload.single("image"), createBlog);
 router.put("/:id", verifyToken, upload.single("image"), updateBlog);
 router.delete("/:id", verifyToken, deleteBlog);
 
