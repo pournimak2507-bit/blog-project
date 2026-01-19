@@ -11,13 +11,10 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   // Expect backend login to return { user, token, message? }
-  const login = (data) => {
-    // data could be { user, token } or previously full res.data
-    const u = data.user ? data.user : data;
-    const token = data.token ? data.token : data.user?.token || null;
+  const login = ({ user, token }) => {
+    if (!user || !token) return;
 
-    // store combined object: { ...userFields, token }
-    const userWithToken = token ? { ...u, token } : u;
+    const userWithToken = { ...user, token };
 
     setUser(userWithToken);
     localStorage.setItem("user", JSON.stringify(userWithToken));
